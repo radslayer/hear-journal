@@ -46,6 +46,11 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
+function truncateTitle(text, max) {
+  if (!text) return "";
+  return text.length > max ? text.slice(0, max) + "…" : text;
+}
+
 function getBookFromPassage(passage) {
   if (!passage) return null;
   for (const book of BIBLE_BOOKS) {
@@ -308,7 +313,7 @@ function ColorPickerModal({ sharedUsers, colorMap, onSave, onClose }) {
         <div style={s.modalDesc}>Choose a color to identify each person's entries.</div>
         {sharedUsers.map(u => (
           <div key={u.id} style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 13, color: "#2c2416", marginBottom: 8, fontWeight: 600 }}>{u.email}</div>
+            <div style={{ fontSize: 13, color: "#2c2416", marginBottom: 8, fontWeight: 600 }}>{u.label || u.email}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {USER_COLORS.map(color => (
                 <div key={color} onClick={() => setLocalMap(prev => ({ ...prev, [u.id]: color }))}
@@ -477,7 +482,16 @@ function HearField({ letter, label, color, value, onChange, readOnly }) {
   );
 }
 
-function EntryCard({ entry, onSelect, onDelete, onShare, isActive, accentColor, ownerLabel }) {
+function EntryCard({ entry, onSelect, onDelete, onShare, isActive, accentColor, ownerLabel, compact }) {
+  if (compact) {
+    return (
+      <div style={{ ...s.entryCardCompact, ...(isActive ? s.entryCardActive : {}), borderLeft: `3px solid ${accentColor || "#3a2e1e"}` }}
+        onClick={() => onSelect(entry)}>
+        <span style={s.entryCardCompactPassage}>{entry.passage}</span>
+        <span style={s.entryCardCompactTitle}>{truncateTitle(entry.title || "Untitled", 20)}</span>
+      </div>
+    );
+  }
   return (
     <div style={{ ...s.entryCard, ...(isActive ? s.entryCardActive : {}), borderLeft: `3px solid ${accentColor || "#3a2e1e"}` }}>
       <div style={{ flex: 1 }} onClick={() => onSelect(entry)}>
@@ -615,6 +629,7 @@ export default function HearJournal() {
   const [sharedJournals, setSharedJournals] = useState([]);
   const [sharedUsers, setSharedUsers] = useState([]);
   const [userColorMap, setUserColorMap] = useState({});
+  const [displayNameCache, setDisplayNameCache] = useState({});
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [view, setView] = useState("list");
   const [selected, setSelected] = useState(null);
@@ -624,6 +639,7 @@ export default function HearJournal() {
   const [sidebarTab, setSidebarTab] = useState("mine");
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [compactView, setCompactView] = useState(() => localStorage.getItem("compactView") === "true");
   const [filters, setFilters] = useState({});
   const [showMineOnly, setShowMineOnly] = useState(false);
 
@@ -681,10 +697,30 @@ export default function HearJournal() {
       const userMap = {};
       shared.forEach(e => { if (e.sharedBy && e.sharedByEmail) userMap[e.sharedBy] = e.sharedByEmail; });
       setSharedUsers(Object.entries(userMap).map(([id, email]) => ({ id, email })));
+      await loadDisplayNames(Object.keys(userMap));
       const q2 = query(collection(db, "journalShares"), where("recipientId", "==", u.uid));
       const snap2 = await getDocs(q2);
       setSharedJournals(snap2.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) { console.error(e); }
+  }
+
+  async function loadDisplayNames(uids) {
+    if (uids.length === 0) return;
+    const results = await Promise.all(uids.map(async uid => {
+      try {
+        const snap = await getDoc(doc(db, "users", uid));
+        return [uid, snap.exists() ? snap.data().displayName : null];
+      } catch (e) { return [uid, null]; }
+    }));
+    setDisplayNameCache(prev => {
+      const next = { ...prev };
+      results.forEach(([uid, name]) => { if (name) next[uid] = name; });
+      return next;
+    });
+  }
+
+  function getDisplayLabel(uid, fallbackEmail) {
+    return (uid && displayNameCache[uid]) || fallbackEmail;
   }
 
   // ── Universal filter logic ─────────────────────────────────────────────────
@@ -717,6 +753,14 @@ export default function HearJournal() {
   function getEntryAccent(entry) {
     if (entry.sharedBy) return userColorMap[entry.sharedBy] || "#5a9a6a";
     return "#b5813a";
+  }
+
+  function toggleCompactView() {
+    setCompactView(v => {
+      const next = !v;
+      localStorage.setItem("compactView", String(next));
+      return next;
+    });
   }
 
   async function saveEntry() {
@@ -814,7 +858,9 @@ export default function HearJournal() {
         </div>
       )}
       {showColorPicker && (
-        <ColorPickerModal sharedUsers={sharedUsers} colorMap={userColorMap}
+        <ColorPickerModal
+          sharedUsers={sharedUsers.map(u => ({ ...u, label: getDisplayLabel(u.id, u.email) }))}
+          colorMap={userColorMap}
           onSave={saveColorPrefs} onClose={() => setShowColorPicker(false)} />
       )}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
@@ -856,6 +902,9 @@ export default function HearJournal() {
             >
               ⚙ Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
             </button>
+            <button style={s.colorBtn} onClick={toggleCompactView} title={compactView ? "Switch to card view" : "Switch to compact view"}>
+              {compactView ? "▦" : "▤"}
+            </button>
             {sharedUsers.length > 0 && (
               <button style={s.colorBtn} onClick={() => setShowColorPicker(true)} title="Set user colors">🎨</button>
             )}
@@ -887,6 +936,7 @@ export default function HearJournal() {
                     onShare={en => setShareTarget(en)}
                     isActive={selected?.id === e.id && view === "read"}
                     accentColor="#b5813a"
+                    compact={compactView}
                   />
                 ))}
               </>
@@ -919,6 +969,7 @@ export default function HearJournal() {
                             onShare={en => setShareTarget(en)}
                             isActive={selected?.id === e.id}
                             accentColor="#b5813a"
+                            compact={compactView}
                           />
                         ))
                       : filteredSharedEntries.map(e => (
@@ -927,7 +978,8 @@ export default function HearJournal() {
                             onDelete={null} onShare={null}
                             isActive={selected?.id === e.id && view === "sharedRead"}
                             accentColor={getEntryAccent(e)}
-                            ownerLabel={e.sharedByEmail}
+                            ownerLabel={getDisplayLabel(e.sharedBy, e.sharedByEmail)}
+                            compact={compactView}
                           />
                         ))
                     }
@@ -972,7 +1024,7 @@ export default function HearJournal() {
                     : selected.translation?.toUpperCase()}
                   </div>
                   {view === "sharedRead" && (
-                    <div style={{ ...s.sharedByLabel, color: getEntryAccent(selected) }}>Shared by {selected.sharedByEmail}</div>
+                    <div style={{ ...s.sharedByLabel, color: getEntryAccent(selected) }}>Shared by {getDisplayLabel(selected.sharedBy, selected.sharedByEmail)}</div>
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -1093,6 +1145,9 @@ const s = {
   sideMsg: { padding: "16px 20px", fontSize: 13, color: "#7a6a50", fontStyle: "italic" },
   ownerLabel: { fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 2 },
   entryCard: { padding: "12px 12px 12px 14px", cursor: "pointer", borderBottom: "1px solid #2a2015", display: "flex", alignItems: "center", gap: 6, borderLeft: "3px solid transparent" },
+  entryCardCompact: { padding: "8px 12px 8px 14px", cursor: "pointer", borderBottom: "1px solid #2a2015", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, borderLeft: "3px solid transparent" },
+  entryCardCompactPassage: { fontSize: 12, color: "#d4b97a", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 },
+  entryCardCompactTitle: { fontSize: 12, color: "#8a7a5a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "right" },
   entryCardActive: { background: "#2e2416" },
   entryCardDate: { fontSize: 11, color: "#7a6a50", marginBottom: 3, letterSpacing: "0.05em" },
   entryCardTitle: { fontSize: 13, color: "#d4b97a", fontWeight: 600, marginBottom: 2 },
