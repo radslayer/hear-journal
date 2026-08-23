@@ -493,17 +493,17 @@ function EntryCard({ entry, onSelect, onDelete, onShare, isActive, accentColor, 
       <div style={{ ...s.entryCardCompact, ...(isActive ? s.entryCardActive : {}), borderLeft: `3px solid ${accentColor || "#3a2e1e"}` }}
         onClick={() => onSelect(entry)}>
         {ownerLabel ? (
-          <span style={s.entryCardCompactLine}>
+          <>
             <span style={s.entryCardCompactPassage}>{entry.passage}</span>
-            <span style={s.entryCardCompactSep}> · </span>
+            <span style={s.entryCardCompactSep}>·</span>
             <span style={{ ...s.entryCardCompactOwner, color: accentColor }}>{ownerLabel}</span>
-            <span style={s.entryCardCompactSep}> — </span>
+            <span style={s.entryCardCompactSep}>·</span>
             <span style={s.entryCardCompactTitle}>{truncateTitle(entry.title || "Untitled", 20)}</span>
-          </span>
+          </>
         ) : (
           <>
             <span style={s.entryCardCompactPassage}>{entry.passage}</span>
-            <span style={s.entryCardCompactTitle}>{truncateTitle(entry.title || "Untitled", 20)}</span>
+            <span style={{ ...s.entryCardCompactTitle, flex: 1 }}>{truncateTitle(entry.title || "Untitled", 20)}</span>
           </>
         )}
       </div>
@@ -1165,12 +1165,11 @@ const s = {
   sideMsg: { padding: "16px 20px", fontSize: 13, color: "#7a6a50", fontStyle: "italic" },
   ownerLabel: { fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 2 },
   entryCard: { padding: "12px 12px 12px 14px", cursor: "pointer", borderBottom: "1px solid #2a2015", display: "flex", alignItems: "center", gap: 6, borderLeft: "3px solid transparent" },
-  entryCardCompact: { padding: "8px 12px 8px 14px", cursor: "pointer", borderBottom: "1px solid #2a2015", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, borderLeft: "3px solid transparent" },
+  entryCardCompact: { padding: "8px 12px 8px 14px", cursor: "pointer", borderBottom: "1px solid #2a2015", display: "flex", alignItems: "center", gap: 8, borderLeft: "3px solid transparent" },
   entryCardCompactPassage: { fontSize: 12, color: "#d4b97a", fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 },
-  entryCardCompactTitle: { fontSize: 12, color: "#8a7a5a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "right" },
-  entryCardCompactLine: { flex: 1, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", fontSize: 12 },
-  entryCardCompactOwner: { fontWeight: 600 },
-  entryCardCompactSep: { color: "#5a4e3a" },
+  entryCardCompactTitle: { fontSize: 12, color: "#8a7a5a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "right", flexShrink: 0, maxWidth: "45%" },
+  entryCardCompactOwner: { fontSize: 12, fontWeight: 600, flex: 1, minWidth: 0, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  entryCardCompactSep: { color: "#5a4e3a", flexShrink: 0 },
   entryCardActive: { background: "#2e2416" },
   entryCardDate: { fontSize: 11, color: "#7a6a50", marginBottom: 3, letterSpacing: "0.05em" },
   entryCardTitle: { fontSize: 13, color: "#d4b97a", fontWeight: 600, marginBottom: 2 },
