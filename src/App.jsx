@@ -205,6 +205,23 @@ async function ensureUserProfile(user, displayName) {
       ownerEmail: user.email,
       sharedWith: [],
     });
+    await addDoc(collection(db, "users", user.uid, "sharedEntries"), {
+      date: new Date().toISOString(),
+      passage: "John 3:16",
+      title: "What a Promise",
+      translation: 111,
+      verseText: "For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.",
+      highlight: "For God so loved the world, that he gave his only Son",
+      explain: "God's love for humanity is so vast that he gave the most precious thing he had — his own Son — so that anyone who believes would have eternal life rather than perish.",
+      apply: "In my life, I will remember that God's love is not conditional on my performance. It is a gift freely given to anyone who believes.",
+      respond: "Lord God - you are amazing and awesome. Your love exceeds anything I could imagine. Thank you for the gift of your Son. Help me to live in the wonder of that love every day.",
+      sharedBy: "FX0V9MN6d9U9QiIWqU5gi394V8v2",
+      sharedByEmail: "rodsalyer@gmail.com",
+      originalEntryId: "welcome",
+      sharedAt: serverTimestamp(),
+      ownerEmail: user.email,
+      sharedWith: [],
+    });
   }
 }
 
