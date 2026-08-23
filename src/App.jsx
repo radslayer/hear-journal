@@ -3,7 +3,7 @@ import { fetchVerse, YV_TRANSLATIONS, FALLBACK_TRANSLATIONS } from "./bibleUtils
 import { initializeApp } from "firebase/app";
 import {
   getFirestore, collection, addDoc, getDocs, deleteDoc, doc,
-  orderBy, query, where, setDoc, getDoc, serverTimestamp
+  orderBy, query, where, setDoc, getDoc, serverTimestamp, limit
 } from "firebase/firestore";
 import {
   getAuth, onAuthStateChanged, signOut,
@@ -189,6 +189,9 @@ async function ensureUserProfile(user, displayName) {
       email: user.email,
       createdAt: serverTimestamp(),
     });
+  }
+  const entriesSnap = await getDocs(query(collection(db, "users", user.uid, "entries"), limit(1)));
+  if (entriesSnap.empty) {
     await addDoc(collection(db, "users", user.uid, "entries"), {
       date: new Date().toISOString(),
       passage: "John 3:16",
