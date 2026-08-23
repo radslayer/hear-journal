@@ -334,7 +334,7 @@ function ColorPickerModal({ sharedUsers, colorMap, onSave, onClose }) {
 }
 
 // ── Filter Panel ──────────────────────────────────────────────────────────────
-function FilterPanel({ filters, onChange, sharedUsers, showMineOnly, onToggleMineOnly, sidebarTab }) {
+function FilterPanel({ filters, onChange, sharedUsers, showMineOnly, onToggleMineOnly, sidebarTab, onClose }) {
   const [bookInput, setBookInput] = useState(filters.book || "");
   const [bookSuggestions, setBookSuggestions] = useState([]);
 
@@ -363,7 +363,10 @@ function FilterPanel({ filters, onChange, sharedUsers, showMineOnly, onToggleMin
     <div style={s.filterPanel}>
       <div style={s.filterHeader}>
         <span style={s.filterTitle}>Filters</span>
-        {hasFilters && <button style={s.clearBtn} onClick={() => { onChange({}); setBookInput(""); }}>Clear all</button>}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {hasFilters && <button style={s.clearBtn} onClick={() => { onChange({}); setBookInput(""); }}>Clear all</button>}
+          <button style={s.filterCloseBtn} onClick={onClose} title="Close filters" aria-label="Close filters">✕</button>
+        </div>
       </div>
 
       {/* Mine only toggle — only shown in shared tab */}
@@ -449,6 +452,8 @@ function FilterPanel({ filters, onChange, sharedUsers, showMineOnly, onToggleMin
           {filters.creator && <span style={s.filterTag}>{sharedUsers.find(u => u.id === filters.creator)?.email}</span>}
         </div>
       )}
+
+      <button style={s.applyFiltersBtn} onClick={onClose}>Apply Filters</button>
     </div>
   );
 }
@@ -918,6 +923,7 @@ export default function HearJournal() {
               showMineOnly={showMineOnly}
               onToggleMineOnly={setShowMineOnly}
               sidebarTab={sidebarTab}
+              onClose={() => setShowFilters(false)}
             />
           )}
 
@@ -1130,6 +1136,7 @@ const s = {
   filterHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   filterTitle: { fontSize: 11, color: "#7a6a50", letterSpacing: "0.1em", textTransform: "uppercase" },
   clearBtn: { fontSize: 11, color: "#b5813a", background: "none", border: "none", cursor: "pointer", fontFamily: "Georgia,serif", textDecoration: "underline" },
+  filterCloseBtn: { background: "none", border: "none", color: "#7a6a50", cursor: "pointer", fontSize: 14, padding: 4, lineHeight: 1, minWidth: 28, minHeight: 28, display: "flex", alignItems: "center", justifyContent: "center" },
   filterRow: { marginBottom: 10 },
   filterLabel: { display: "block", fontSize: 11, color: "#7a6a50", marginBottom: 4, letterSpacing: "0.05em" },
   filterInput: { width: "100%", padding: "6px 8px", background: "#2a2015", border: "1px solid #3a2e1e", borderRadius: 5, color: "#d4b97a", fontSize: 12, fontFamily: "Georgia,serif", outline: "none", boxSizing: "border-box" },
@@ -1141,6 +1148,7 @@ const s = {
   toggleBtnActive: { background: "#b5813a", color: "#fff", borderColor: "#b5813a" },
   filterSummary: { display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 },
   filterTag: { background: "#2e2416", border: "1px solid #b5813a", borderRadius: 10, padding: "2px 8px", fontSize: 10, color: "#c8a96e" },
+  applyFiltersBtn: { width: "100%", minHeight: 44, padding: "10px 0", background: "#b5813a", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontFamily: "Georgia,serif", cursor: "pointer", letterSpacing: "0.04em", marginTop: 14, boxSizing: "border-box" },
   entryList: { flex: 1, overflowY: "auto", padding: "4px 0" },
   sideMsg: { padding: "16px 20px", fontSize: 13, color: "#7a6a50", fontStyle: "italic" },
   ownerLabel: { fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 2 },
