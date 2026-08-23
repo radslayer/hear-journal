@@ -1,16 +1,64 @@
-# React + Vite
+# H.E.A.R. Bible Journal
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A React + Firebase app for journaling H.E.A.R. (Highlight, Explain, Apply, Respond) Bible study entries, with support for sharing entries and commenting.
 
-Currently, two official plugins are available:
+Live at: https://hear-bible-study-56f67.web.app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack
 
-## React Compiler
+- React 19 + Vite
+- Firebase Auth (email/password + Google sign-in)
+- Firestore (per-user entries, sharing, comments)
+- Firebase Hosting
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Setup
 
-## Expanding the Oxlint configuration
+```bash
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The Firebase project config is already embedded in `src/App.jsx` (client-side config is safe to expose — access is controlled by Firestore security rules, not by hiding this config).
+
+## Development
+
+```bash
+npm run dev
+```
+
+Starts the Vite dev server (default: http://localhost:5173).
+
+## Lint
+
+```bash
+npm run lint
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+Outputs a production build to `dist/`.
+
+## Deploy
+
+Deploys are made to Firebase Hosting on project `hear-bible-study-56f67` (configured in `.firebaserc` / `firebase.json`).
+
+1. Install the Firebase CLI if you don't have it:
+   ```bash
+   npm install -g firebase-tools
+   ```
+2. Authenticate (one-time, opens a browser):
+   ```bash
+   firebase login
+   ```
+3. Build and deploy:
+   ```bash
+   npm run build
+   firebase deploy --only hosting
+   ```
+
+## Notes
+
+- `migrate.mjs` is a one-off script used to migrate legacy top-level `entries` documents into the current per-user `users/{uid}/entries` structure. Not part of the normal app flow.
