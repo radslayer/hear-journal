@@ -60,8 +60,22 @@ function getChapterFromPassage(passage) {
   return match ? parseInt(match[1]) : null;
 }
 
+const MOBILE_BREAKPOINT = 768;
+
+function useWindowSize() {
+  const [width, setWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    function onResize() { setWidth(window.innerWidth); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return width;
+}
+
 // ── Auth Screen ───────────────────────────────────────────────────────────────
 function AuthScreen({ onAuth }) {
+  const width = useWindowSize();
+  const isMobile = width < MOBILE_BREAKPOINT;
   const [mode, setMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -130,7 +144,7 @@ function AuthScreen({ onAuth }) {
   if (mode === "verify") {
     return (
       <div style={s.authRoot}>
-        <div style={s.authCard}>
+        <div style={{ ...s.authCard, ...(isMobile ? { padding: "28px 22px" } : {}) }}>
           <div style={s.logoText}>H.E.A.R.</div>
           <div style={s.logoSub}>Bible Journal</div>
           <div style={{ marginTop: 32, textAlign: "center" }}>
@@ -257,7 +271,7 @@ function AboutModal({ onClose }) {
   };
   return (
     <div style={s.modalOverlay} onClick={onClose}>
-      <div style={{ ...s.modalCard, width: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+      <div style={{ ...s.modalCard, maxWidth: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
         <div style={s.modalTitle}>The H.E.A.R. Method</div>
         <p style={{ ...s.modalDesc, marginBottom: 24 }}>
           Reading the Bible is easier when there is a strategy to it. Early Jesus followers developed a strategy called Lectio Divina, practiced since the 6th Century as a way of hearing from God through the Scriptures. This ancient practice has been updated for modern readers into what is called the H.E.A.R. Method.
@@ -591,6 +605,9 @@ function ShareModal({ entry, user, onClose }) {
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function HearJournal() {
+  const width = useWindowSize();
+  const isMobile = width < MOBILE_BREAKPOINT;
+  const [showSidebar, setShowSidebar] = useState(false);
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [entries, setEntries] = useState([]);
@@ -714,6 +731,7 @@ export default function HearJournal() {
       const ref = await addDoc(collection(db, "users", user.uid, "entries"), entry);
       setEntries(prev => [{ id: ref.id, ...entry }, ...prev]);
       setView("list"); resetForm();
+      if (isMobile) setShowSidebar(true);
     } catch (e) { alert("Failed to save entry."); console.error(e); }
     finally { setSaving(false); }
   }
@@ -723,7 +741,7 @@ export default function HearJournal() {
     try {
       await deleteDoc(doc(db, "users", user.uid, "entries", entry.id));
       setEntries(prev => prev.filter(e => e.id !== entry.id));
-      if (selected?.id === entry.id) { setSelected(null); setView("list"); }
+      if (selected?.id === entry.id) { setSelected(null); setView("list"); if (isMobile) setShowSidebar(true); }
     } catch (e) { alert("Failed to delete."); }
   }
 
@@ -742,6 +760,16 @@ export default function HearJournal() {
     setHighlight(""); setExplain(""); setApply(""); setRespond("");
   }
 
+  function selectEntry(entry, targetView) {
+    setSelected(entry); setView(targetView);
+    if (isMobile) setShowSidebar(false);
+  }
+
+  function startNewEntry() {
+    setView("new"); setSelected(null); resetForm();
+    if (isMobile) setShowSidebar(false);
+  }
+
   if (!authReady) return <div style={s.loading}>Loading...</div>;
   if (!user) return <AuthScreen onAuth={setUser} />;
 
@@ -749,6 +777,12 @@ export default function HearJournal() {
 
   return (
     <div style={s.root}>
+      {isMobile && (
+        <div style={s.mobileTopBar}>
+          <button style={s.hamburgerBtn} onClick={() => setShowSidebar(v => !v)} aria-label="Toggle menu">☰</button>
+          <span style={s.mobileTopBarTitle}>H.E.A.R.</span>
+        </div>
+      )}
       {needsVerification && <VerifyBanner user={user} />}
       {shareTarget && <ShareModal entry={shareTarget} user={user} onClose={() => setShareTarget(null)} />}
       {showInvite && (
@@ -785,14 +819,24 @@ export default function HearJournal() {
       )}
       {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
 
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <aside style={s.sidebar}>
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+        {isMobile && showSidebar && (
+          <div style={s.sidebarBackdrop} onClick={() => setShowSidebar(false)} />
+        )}
+        <aside style={isMobile ? {
+          ...s.sidebar,
+          position: "fixed", top: 52, left: 0, bottom: 0, zIndex: 200, width: "85%", maxWidth: 320, minWidth: 0,
+          boxSizing: "border-box",
+          transform: showSidebar ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.25s ease",
+          boxShadow: showSidebar ? "4px 0 20px rgba(0,0,0,0.3)" : "none",
+        } : s.sidebar}>
           <div style={s.sidebarTop}>
             <div style={s.logoBlock}>
               <div style={s.logoText}>H.E.A.R.</div>
               <div style={s.logoSub}>Bible Journal</div>
             </div>
-            <button style={s.newBtn} onClick={() => { setView("new"); setSelected(null); resetForm(); }}>+ New Entry</button>
+            <button style={s.newBtn} onClick={startNewEntry}>+ New Entry</button>
             <div style={{ display: "flex", gap: 8 }}>
               <button style={s.inviteBtn} onClick={() => setShowInvite(true)}>✉ Invite a Friend</button>
               <button style={s.aboutBtn} onClick={() => setShowAbout(true)} title="About the H.E.A.R. Method">?</button>
@@ -838,7 +882,7 @@ export default function HearJournal() {
                 )}
                 {filteredEntries.map(e => (
                   <EntryCard key={e.id} entry={e}
-                    onSelect={en => { setSelected(en); setView("read"); }}
+                    onSelect={en => selectEntry(en, "read")}
                     onDelete={deleteEntry}
                     onShare={en => setShareTarget(en)}
                     isActive={selected?.id === e.id && view === "read"}
@@ -870,7 +914,7 @@ export default function HearJournal() {
                     {showMineOnly
                       ? filteredEntries.map(e => (
                           <EntryCard key={e.id} entry={e}
-                            onSelect={en => { setSelected(en); setView("read"); }}
+                            onSelect={en => selectEntry(en, "read")}
                             onDelete={deleteEntry}
                             onShare={en => setShareTarget(en)}
                             isActive={selected?.id === e.id}
@@ -879,7 +923,7 @@ export default function HearJournal() {
                         ))
                       : filteredSharedEntries.map(e => (
                           <EntryCard key={e.id} entry={e}
-                            onSelect={en => { setSelected(en); setView("sharedRead"); }}
+                            onSelect={en => selectEntry(en, "sharedRead")}
                             onDelete={null} onShare={null}
                             isActive={selected?.id === e.id && view === "sharedRead"}
                             accentColor={getEntryAccent(e)}
@@ -918,11 +962,11 @@ export default function HearJournal() {
           )}
 
           {(view === "read" || view === "sharedRead") && selected && (
-            <div style={s.readView}>
-              <div style={s.readHeader}>
+            <div style={{ ...s.readView, ...(isMobile ? { padding: "20px 16px" } : {}) }}>
+              <div style={{ ...s.readHeader, ...(isMobile ? { flexWrap: "wrap", gap: 12 } : {}) }}>
                 <div>
                   <div style={s.readDate}>{formatDate(selected.date)}</div>
-                  <div style={s.readTitle}>{selected.title || "Untitled"}</div>
+                  <div style={{ ...s.readTitle, ...(isMobile ? { fontSize: 20 } : {}) }}>{selected.title || "Untitled"}</div>
                   <div style={s.readPassage}>{selected.passage} · {typeof selected.translation === "number"
                     ? ALL_TRANSLATIONS.find(t => t.id === selected.translation)?.label || selected.translation
                     : selected.translation?.toUpperCase()}
@@ -933,7 +977,7 @@ export default function HearJournal() {
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   {view === "read" && <button style={s.shareEntryBtn} onClick={() => setShareTarget(selected)}>⤴ Share</button>}
-                  <button style={s.backBtn} onClick={() => { setView("list"); setSelected(null); }}>← Back</button>
+                  <button style={s.backBtn} onClick={() => { setView("list"); setSelected(null); if (isMobile) setShowSidebar(true); }}>← Back</button>
                 </div>
               </div>
 
@@ -956,13 +1000,13 @@ export default function HearJournal() {
           )}
 
           {view === "new" && (
-            <div style={s.newView}>
-              <div style={s.newHeader}>
-                <div style={s.newTitle}>New Journal Entry</div>
+            <div style={{ ...s.newView, ...(isMobile ? { padding: "20px 16px" } : {}) }}>
+              <div style={{ ...s.newHeader, ...(isMobile ? { flexWrap: "wrap", gap: 8 } : {}) }}>
+                <div style={{ ...s.newTitle, ...(isMobile ? { fontSize: 18 } : {}) }}>New Journal Entry</div>
                 <div style={s.newDate}>{formatDate(new Date().toISOString())}</div>
               </div>
-              <div style={s.passageRow}>
-                <div style={s.passageInputWrap}>
+              <div style={{ ...s.passageRow, ...(isMobile ? { flexWrap: "wrap" } : {}) }}>
+                <div style={{ ...s.passageInputWrap, ...(isMobile ? { minWidth: "100%" } : {}) }}>
                   <input style={s.passageInput} placeholder="Passage (e.g. John 3:16)" value={passage}
                     onChange={e => setPassage(e.target.value)} onKeyDown={e => e.key === "Enter" && fetchVerse_()} />
                   <select style={s.translationSelect} value={translation}
@@ -970,7 +1014,7 @@ export default function HearJournal() {
                     {ALL_TRANSLATIONS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                   </select>
                 </div>
-                <button style={s.fetchBtn} onClick={fetchVerse_} disabled={verseLoading}>{verseLoading ? "..." : "Fetch Verse"}</button>
+                <button style={{ ...s.fetchBtn, ...(isMobile ? { flex: 1 } : {}) }} onClick={fetchVerse_} disabled={verseLoading}>{verseLoading ? "..." : "Fetch Verse"}</button>
               </div>
               <input style={s.titleInput} placeholder="Entry title (optional)" value={title} onChange={e => setTitle(e.target.value)} />
               <VerseDisplay text={verseText} loading={verseLoading} error={verseError} />
@@ -983,7 +1027,7 @@ export default function HearJournal() {
                 <HearField key={letter} letter={letter} label={label} color={HEAR_COLORS[letter]} value={val} onChange={set} />
               ))}
               <div style={s.actionRow}>
-                <button style={s.cancelBtn} onClick={() => setView("list")}>Cancel</button>
+                <button style={s.cancelBtn} onClick={() => { setView("list"); if (isMobile) setShowSidebar(true); }}>Cancel</button>
                 <button style={{ ...s.saveBtn, opacity: (!passage || !highlight || saving) ? 0.5 : 1 }}
                   onClick={saveEntry} disabled={!passage || !highlight || saving}>
                   {saving ? "Saving..." : "Save to Cloud ☁"}
@@ -1001,19 +1045,23 @@ export default function HearJournal() {
 const s = {
   root: { display: "flex", flexDirection: "column", height: "100vh", fontFamily: "'Georgia','Palatino Linotype',serif", background: "#f5f0e8", color: "#2c2416", overflow: "hidden" },
   loading: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontSize: 18, color: "#b5813a", fontFamily: "Georgia,serif" },
-  authRoot: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#f5f0e8" },
-  authCard: { background: "#fff", borderRadius: 12, padding: "40px 36px", width: 360, boxShadow: "0 4px 24px rgba(0,0,0,0.08)", fontFamily: "Georgia,serif" },
+  authRoot: { display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#f5f0e8", padding: 16, boxSizing: "border-box" },
+  authCard: { background: "#fff", borderRadius: 12, padding: "40px 36px", width: "100%", maxWidth: 360, boxSizing: "border-box", boxShadow: "0 4px 24px rgba(0,0,0,0.08)", fontFamily: "Georgia,serif" },
   authTitle: { fontSize: 18, fontWeight: 700, color: "#2c2416", margin: "24px 0 20px", textAlign: "center" },
-  googleBtn: { width: "100%", padding: "11px 0", background: "#fff", border: "1.5px solid #d0c0a0", borderRadius: 7, fontSize: 14, fontFamily: "Georgia,serif", cursor: "pointer", color: "#2c2416", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center" },
+  googleBtn: { width: "100%", minHeight: 44, padding: "11px 0", background: "#fff", border: "1.5px solid #d0c0a0", borderRadius: 7, fontSize: 14, fontFamily: "Georgia,serif", cursor: "pointer", color: "#2c2416", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box" },
   divider: { textAlign: "center", color: "#c0b090", fontSize: 12, marginBottom: 16 },
-  authInput: { width: "100%", padding: "10px 14px", border: "1.5px solid #d0c0a0", borderRadius: 7, fontSize: 14, fontFamily: "Georgia,serif", background: "#faf8f4", color: "#2c2416", marginBottom: 12, outline: "none", boxSizing: "border-box" },
-  authBtn: { width: "100%", padding: "11px 0", background: "#b5813a", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontFamily: "Georgia,serif", cursor: "pointer", marginTop: 4 },
-  authBtnSecondary: { width: "100%", padding: "10px 0", background: "none", color: "#b5813a", border: "1.5px solid #b5813a", borderRadius: 7, fontSize: 13, fontFamily: "Georgia,serif", cursor: "pointer" },
+  authInput: { width: "100%", minHeight: 44, padding: "10px 14px", border: "1.5px solid #d0c0a0", borderRadius: 7, fontSize: 16, fontFamily: "Georgia,serif", background: "#faf8f4", color: "#2c2416", marginBottom: 12, outline: "none", boxSizing: "border-box" },
+  authBtn: { width: "100%", minHeight: 44, padding: "11px 0", background: "#b5813a", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontFamily: "Georgia,serif", cursor: "pointer", marginTop: 4, boxSizing: "border-box" },
+  authBtnSecondary: { width: "100%", minHeight: 44, padding: "10px 0", background: "none", color: "#b5813a", border: "1.5px solid #b5813a", borderRadius: 7, fontSize: 13, fontFamily: "Georgia,serif", cursor: "pointer", boxSizing: "border-box" },
   authError: { padding: "10px 12px", background: "#fdecea", border: "1px solid #f0c0c0", borderRadius: 6, fontSize: 13, color: "#b04040", marginBottom: 12 },
   authSwitch: { textAlign: "center", fontSize: 13, color: "#8a7a5a", marginTop: 16 },
   authLink: { color: "#b5813a", cursor: "pointer", textDecoration: "underline" },
   verifyBanner: { background: "#fff3cd", borderBottom: "1px solid #ffc107", padding: "10px 20px", fontSize: 13, color: "#856404", textAlign: "center" },
   sidebar: { width: 300, minWidth: 240, background: "#1e1710", display: "flex", flexDirection: "column", borderRight: "1px solid #3a2e1e", overflow: "hidden" },
+  mobileTopBar: { display: "flex", alignItems: "center", gap: 12, padding: "6px 12px", background: "#1e1710", borderBottom: "1px solid #3a2e1e", flexShrink: 0, height: 52, boxSizing: "border-box" },
+  hamburgerBtn: { background: "none", border: "1px solid #3a2e1e", borderRadius: 6, color: "#c8a96e", fontSize: 18, padding: 0, cursor: "pointer", lineHeight: 1, minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" },
+  mobileTopBarTitle: { color: "#c8a96e", fontSize: 15, fontWeight: 700, letterSpacing: "0.14em", fontFamily: "Georgia,serif" },
+  sidebarBackdrop: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 150 },
   sidebarTop: { padding: "24px 20px 0", borderBottom: "1px solid #3a2e1e" },
   logoBlock: { marginBottom: 14 },
   logoText: { fontSize: 24, fontWeight: 700, letterSpacing: "0.18em", color: "#c8a96e", fontFamily: "Georgia,serif" },
@@ -1050,7 +1098,7 @@ const s = {
   entryCardTitle: { fontSize: 13, color: "#d4b97a", fontWeight: 600, marginBottom: 2 },
   entryCardPassage: { fontSize: 12, color: "#5a4e3a" },
   sharedBadge: { fontSize: 10, color: "#5a9a6a", background: "#1a2e1a", borderRadius: 3, padding: "1px 5px", display: "inline-block", marginTop: 3 },
-  iconBtn: { background: "none", border: "none", color: "#5a4a3a", cursor: "pointer", fontSize: 13, padding: "2px 5px", borderRadius: 4, opacity: 0.7 },
+  iconBtn: { background: "none", border: "none", color: "#5a4a3a", cursor: "pointer", fontSize: 15, padding: "6px 8px", borderRadius: 4, opacity: 0.7, minWidth: 32, minHeight: 32 },
   sharedSection: { padding: "4px 0" },
   sharedSectionTitle: { padding: "8px 20px 4px", fontSize: 10, color: "#7a6a50", letterSpacing: "0.1em", textTransform: "uppercase" },
   sharedJournalCard: { padding: "10px 20px", borderBottom: "1px solid #2a2015" },
@@ -1076,10 +1124,10 @@ const s = {
   newDate: { fontSize: 12, color: "#a09070", letterSpacing: "0.08em" },
   passageRow: { display: "flex", gap: 10, marginBottom: 12, alignItems: "stretch" },
   passageInputWrap: { flex: 1, display: "flex", border: "1.5px solid #d0c0a0", borderRadius: 7, overflow: "hidden", background: "#fff" },
-  passageInput: { flex: 1, padding: "11px 14px", border: "none", outline: "none", fontSize: 15, fontFamily: "Georgia,serif", background: "transparent", color: "#2c2416" },
+  passageInput: { flex: 1, minWidth: 0, padding: "11px 14px", border: "none", outline: "none", fontSize: 16, fontFamily: "Georgia,serif", background: "transparent", color: "#2c2416" },
   translationSelect: { border: "none", borderLeft: "1.5px solid #d0c0a0", background: "#f5f0e8", padding: "0 10px", fontSize: 12, color: "#7a6a50", fontFamily: "Georgia,serif", cursor: "pointer", outline: "none" },
   fetchBtn: { padding: "11px 20px", background: "#2c2416", color: "#c8a96e", border: "none", borderRadius: 7, fontSize: 14, fontFamily: "Georgia,serif", cursor: "pointer", letterSpacing: "0.04em", whiteSpace: "nowrap" },
-  titleInput: { width: "100%", padding: "10px 14px", border: "1.5px solid #d0c0a0", borderRadius: 7, fontSize: 15, fontFamily: "Georgia,serif", background: "#fff", color: "#2c2416", marginBottom: 16, outline: "none", boxSizing: "border-box" },
+  titleInput: { width: "100%", minHeight: 44, padding: "10px 14px", border: "1.5px solid #d0c0a0", borderRadius: 7, fontSize: 16, fontFamily: "Georgia,serif", background: "#fff", color: "#2c2416", marginBottom: 16, outline: "none", boxSizing: "border-box" },
   verseBox: { background: "#f0e8d4", border: "1px solid #d8c8a0", borderRadius: 8, padding: "16px 20px", fontSize: 15, fontStyle: "italic", lineHeight: 1.7, color: "#4a3c24", marginBottom: 20 },
   verseQuote: { fontSize: 22, color: "#b5813a", fontStyle: "normal", lineHeight: 1 },
   verseError: { background: "#fdecea", borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#b04040", marginBottom: 16, border: "1px solid #f0c0c0" },
@@ -1087,7 +1135,7 @@ const s = {
   hearLabelRow: { display: "flex", alignItems: "center", gap: 10, marginBottom: 8 },
   hearLetter: { fontSize: 22, fontWeight: 700, lineHeight: 1, fontFamily: "Georgia,serif" },
   hearLabel: { fontSize: 12, color: "#8a7a5a", letterSpacing: "0.06em", textTransform: "uppercase" },
-  hearTextarea: { width: "100%", padding: "10px 12px", border: "1.5px solid #d0c0a0", borderRadius: 6, fontSize: 15, fontFamily: "Georgia,serif", color: "#2c2416", background: "#fff", resize: "vertical", lineHeight: 1.65, outline: "2px solid transparent", outlineOffset: 2, boxSizing: "border-box" },
+  hearTextarea: { width: "100%", padding: "10px 12px", border: "1.5px solid #d0c0a0", borderRadius: 6, fontSize: 16, fontFamily: "Georgia,serif", color: "#2c2416", background: "#fff", resize: "vertical", lineHeight: 1.65, outline: "2px solid transparent", outlineOffset: 2, boxSizing: "border-box" },
   actionRow: { display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 28, paddingTop: 20, borderTop: "1px solid #e0d8c8" },
   cancelBtn: { padding: "10px 22px", background: "none", border: "1.5px solid #d0c0a0", borderRadius: 7, fontSize: 14, color: "#8a7a5a", fontFamily: "Georgia,serif", cursor: "pointer" },
   saveBtn: { padding: "10px 28px", background: "#b5813a", color: "#fff", border: "none", borderRadius: 7, fontSize: 14, fontFamily: "Georgia,serif", cursor: "pointer", letterSpacing: "0.04em", transition: "opacity 0.15s" },
@@ -1099,8 +1147,8 @@ const s = {
   commentInputRow: { display: "flex", gap: 8, marginTop: 12 },
   commentInput: { flex: 1, padding: "9px 12px", border: "1.5px solid #d0c0a0", borderRadius: 6, fontSize: 14, fontFamily: "Georgia,serif", color: "#2c2416", background: "#fff", outline: "none" },
   commentBtn: { padding: "9px 18px", background: "#2c2416", color: "#c8a96e", border: "none", borderRadius: 6, fontSize: 13, fontFamily: "Georgia,serif", cursor: "pointer" },
-  modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modalCard: { background: "#fff", borderRadius: 12, padding: "36px 32px", width: 380, boxShadow: "0 8px 40px rgba(0,0,0,0.15)", fontFamily: "Georgia,serif" },
+  modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16, boxSizing: "border-box" },
+  modalCard: { background: "#fff", borderRadius: 12, padding: "36px 32px", width: "100%", maxWidth: 380, boxSizing: "border-box", boxShadow: "0 8px 40px rgba(0,0,0,0.15)", fontFamily: "Georgia,serif" },
   modalTitle: { fontSize: 20, fontWeight: 700, color: "#2c2416", marginBottom: 8 },
   modalDesc: { fontSize: 13, color: "#8a7a5a", lineHeight: 1.6, marginBottom: 20 },
   shareTypeRow: { display: "flex", gap: 8, marginBottom: 16 },
