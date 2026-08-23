@@ -205,6 +205,9 @@ async function ensureUserProfile(user, displayName) {
       ownerEmail: user.email,
       sharedWith: [],
     });
+  }
+  const sharedEntriesSnap = await getDocs(query(collection(db, "users", user.uid, "sharedEntries"), where("originalEntryId", "==", "welcome"), limit(1)));
+  if (sharedEntriesSnap.empty) {
     await addDoc(collection(db, "users", user.uid, "sharedEntries"), {
       date: new Date().toISOString(),
       passage: "John 3:16",
@@ -237,6 +240,51 @@ function VerifyBanner({ user }) {
 }
 
 // ── Color Picker ──────────────────────────────────────────────────────────────
+function AboutModal({ onClose }) {
+  const sections = [
+    { letter: "H", label: "Highlight", text: "Choose a verse that speaks to you from the passage." },
+    { letter: "E", label: "Explain", text: "Explain as best you can what the verse means in its original context." },
+    { letter: "A", label: "Apply", text: "Apply that meaning to your life today." },
+    { letter: "R", label: "Respond", text: "Respond to what God is saying to you — some days that might be a prayer, others it might be something God is calling you to do." },
+  ];
+  const sample = {
+    passage: "Philippians 4:10-13",
+    title: "The Secret of Contentment",
+    highlight: "I can do all things through Christ who strengthens me — Philippians 4:13",
+    explain: "Paul was telling the church at Philippi that he has discovered the secret of contentment. No matter the situation, he realized that Christ was all he needed.",
+    apply: "In my life, I will experience many ups and downs. My contentment is not found in circumstances but in my relationship with Jesus Christ.",
+    respond: "Lord Jesus, please help me as I strive to be content in You. Through Your strength, I can make it through any situation.",
+  };
+  return (
+    <div style={s.modalOverlay} onClick={onClose}>
+      <div style={{ ...s.modalCard, width: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        <div style={s.modalTitle}>The H.E.A.R. Method</div>
+        <p style={{ ...s.modalDesc, marginBottom: 24 }}>
+          Reading the Bible is easier when there is a strategy to it. Early Jesus followers developed a strategy called Lectio Divina, practiced since the 6th Century as a way of hearing from God through the Scriptures. This ancient practice has been updated for modern readers into what is called the H.E.A.R. Method.
+        </p>
+        {sections.map(({ letter, label, text }) => (
+          <HearField key={letter} letter={letter} label={label} color={HEAR_COLORS[letter]} value={text} readOnly />
+        ))}
+        <div style={{ ...s.modalTitle, fontSize: 16, marginTop: 28, marginBottom: 12 }}>Sample Entry</div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={s.readTitle}>{sample.title}</div>
+          <div style={s.readPassage}>{sample.passage}</div>
+        </div>
+        <div style={s.verseBox}><span style={s.verseQuote}>"</span>{sample.highlight}<span style={s.verseQuote}>"</span></div>
+        {[
+          { letter: "H", label: "Highlight", val: sample.highlight },
+          { letter: "E", label: "Explain", val: sample.explain },
+          { letter: "A", label: "Apply", val: sample.apply },
+          { letter: "R", label: "Respond", val: sample.respond },
+        ].map(({ letter, label, val }) => (
+          <HearField key={letter} letter={letter} label={label} color={HEAR_COLORS[letter]} value={val} readOnly />
+        ))}
+        <button style={s.cancelBtn} onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
 function ColorPickerModal({ sharedUsers, colorMap, onSave, onClose }) {
   const [localMap, setLocalMap] = useState({ ...colorMap });
   return (
@@ -554,7 +602,8 @@ export default function HearJournal() {
   const [view, setView] = useState("list");
   const [selected, setSelected] = useState(null);
   const [shareTarget, setShareTarget] = useState(null);
-const [showInvite, setShowInvite] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [sidebarTab, setSidebarTab] = useState("mine");
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -734,6 +783,7 @@ const [showInvite, setShowInvite] = useState(false);
         <ColorPickerModal sharedUsers={sharedUsers} colorMap={userColorMap}
           onSave={saveColorPrefs} onClose={() => setShowColorPicker(false)} />
       )}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <aside style={s.sidebar}>
@@ -743,7 +793,10 @@ const [showInvite, setShowInvite] = useState(false);
               <div style={s.logoSub}>Bible Journal</div>
             </div>
             <button style={s.newBtn} onClick={() => { setView("new"); setSelected(null); resetForm(); }}>+ New Entry</button>
-            <button style={s.inviteBtn} onClick={() => setShowInvite(true)}>✉ Invite a Friend</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={s.inviteBtn} onClick={() => setShowInvite(true)}>✉ Invite a Friend</button>
+              <button style={s.aboutBtn} onClick={() => setShowAbout(true)} title="About the H.E.A.R. Method">?</button>
+            </div>
             <div style={s.tabRow}>
               <button style={{ ...s.tab, ...(sidebarTab === "mine" ? s.tabActive : {}) }} onClick={() => setSidebarTab("mine")}>My Journal</button>
               <button style={{ ...s.tab, ...(sidebarTab === "shared" ? s.tabActive : {}) }} onClick={() => setSidebarTab("shared")}>
@@ -1053,5 +1106,6 @@ const s = {
   shareTypeRow: { display: "flex", gap: 8, marginBottom: 16 },
   shareTypeBtn: { flex: 1, padding: "9px 0", background: "#f5f0e8", border: "1.5px solid #d0c0a0", borderRadius: 6, fontSize: 13, fontFamily: "Georgia,serif", cursor: "pointer", color: "#8a7a5a" },
   shareTypeBtnActive: { background: "#b5813a", color: "#fff", borderColor: "#b5813a" },
-  inviteBtn: { width: "100%", padding: "8px 0", background: "none", border: "1px solid #b5813a", borderRadius: 6, fontSize: 13, fontFamily: "Georgia,serif", cursor: "pointer", color: "#b5813a", letterSpacing: "0.04em", marginBottom: 12 },
+  inviteBtn: { flex: 1, padding: "8px 0", background: "none", border: "1px solid #b5813a", borderRadius: 6, fontSize: 13, fontFamily: "Georgia,serif", cursor: "pointer", color: "#b5813a", letterSpacing: "0.04em", marginBottom: 12 },
+  aboutBtn: { width: 36, padding: "8px 0", background: "none", border: "1px solid #b5813a", borderRadius: 6, fontSize: 13, fontWeight: 700, fontFamily: "Georgia,serif", cursor: "pointer", color: "#b5813a", marginBottom: 12 },
 };
