@@ -259,7 +259,7 @@ function VerifyBanner({ user }) {
 }
 
 // ── Color Picker ──────────────────────────────────────────────────────────────
-function AboutModal({ onClose }) {
+function HearMethodContent() {
   const sections = [
     { letter: "H", label: "Highlight", text: "Choose a verse that speaks to you from the passage." },
     { letter: "E", label: "Explain", text: "Explain as best you can what the verse means in its original context." },
@@ -275,29 +275,37 @@ function AboutModal({ onClose }) {
     respond: "Lord Jesus, please help me as I strive to be content in You. Through Your strength, I can make it through any situation.",
   };
   return (
+    <>
+      <div style={s.modalTitle}>The H.E.A.R. Method</div>
+      <p style={{ ...s.modalDesc, marginBottom: 24 }}>
+        Reading the Bible is easier when there is a strategy to it. Early Jesus followers developed a strategy called Lectio Divina, practiced since the 6th Century as a way of hearing from God through the Scriptures. This ancient practice has been updated for modern readers into what is called the H.E.A.R. Method.
+      </p>
+      {sections.map(({ letter, label, text }) => (
+        <HearField key={letter} letter={letter} label={label} color={HEAR_COLORS[letter]} value={text} readOnly />
+      ))}
+      <div style={{ ...s.modalTitle, fontSize: 16, marginTop: 28, marginBottom: 12 }}>Sample Entry</div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={s.readTitle}>{sample.title}</div>
+        <div style={s.readPassage}>{sample.passage}</div>
+      </div>
+      <div style={s.verseBox}><span style={s.verseQuote}>"</span>{sample.highlight}<span style={s.verseQuote}>"</span></div>
+      {[
+        { letter: "H", label: "Highlight", val: sample.highlight },
+        { letter: "E", label: "Explain", val: sample.explain },
+        { letter: "A", label: "Apply", val: sample.apply },
+        { letter: "R", label: "Respond", val: sample.respond },
+      ].map(({ letter, label, val }) => (
+        <HearField key={letter} letter={letter} label={label} color={HEAR_COLORS[letter]} value={val} readOnly />
+      ))}
+    </>
+  );
+}
+
+function AboutModal({ onClose }) {
+  return (
     <div style={s.modalOverlay} onClick={onClose}>
       <div style={{ ...s.modalCard, maxWidth: 480, maxHeight: "85vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
-        <div style={s.modalTitle}>The H.E.A.R. Method</div>
-        <p style={{ ...s.modalDesc, marginBottom: 24 }}>
-          Reading the Bible is easier when there is a strategy to it. Early Jesus followers developed a strategy called Lectio Divina, practiced since the 6th Century as a way of hearing from God through the Scriptures. This ancient practice has been updated for modern readers into what is called the H.E.A.R. Method.
-        </p>
-        {sections.map(({ letter, label, text }) => (
-          <HearField key={letter} letter={letter} label={label} color={HEAR_COLORS[letter]} value={text} readOnly />
-        ))}
-        <div style={{ ...s.modalTitle, fontSize: 16, marginTop: 28, marginBottom: 12 }}>Sample Entry</div>
-        <div style={{ marginBottom: 16 }}>
-          <div style={s.readTitle}>{sample.title}</div>
-          <div style={s.readPassage}>{sample.passage}</div>
-        </div>
-        <div style={s.verseBox}><span style={s.verseQuote}>"</span>{sample.highlight}<span style={s.verseQuote}>"</span></div>
-        {[
-          { letter: "H", label: "Highlight", val: sample.highlight },
-          { letter: "E", label: "Explain", val: sample.explain },
-          { letter: "A", label: "Apply", val: sample.apply },
-          { letter: "R", label: "Respond", val: sample.respond },
-        ].map(({ letter, label, val }) => (
-          <HearField key={letter} letter={letter} label={label} color={HEAR_COLORS[letter]} value={val} readOnly />
-        ))}
+        <HearMethodContent />
         <button style={s.cancelBtn} onClick={onClose}>Close</button>
       </div>
     </div>
@@ -899,7 +907,7 @@ export default function HearJournal() {
             <div style={s.divider}><span>or</span></div>
             <div style={{ marginBottom: 20 }}>
               <div style={s.filterLabel}>Send an email invite</div>
-              <a href={`mailto:?subject=Join me on H.E.A.R. Bible Journal&body=I've been using H.E.A.R. Bible Journal to study the Bible and wanted to invite you to join me. You can access it here: ${window.location.origin}%0D%0A%0D%0AOnce you create an account, I can share my journal entries with you directly in the app.`}
+              <a href={`mailto:?subject=${encodeURIComponent("Join me on H.E.A.R. Bible Journal")}&body=${encodeURIComponent(`I've been using H.E.A.R. Bible Journal to study the Bible and wanted to invite you to join me. You can access it here: ${window.location.origin}\r\n\r\nOnce you create an account, I can share my journal entries with you directly in the app.`)}`}
                 style={{ ...s.saveBtn, display: "block", textAlign: "center", textDecoration: "none", marginTop: 8 }}>
                 Open Email App
               </a>
@@ -1060,10 +1068,8 @@ export default function HearJournal() {
         {/* Main panel */}
         <main style={s.main}>
           {view === "list" && (
-            <div style={s.emptyState}>
-              <div style={s.emptyIcon}>✦</div>
-              <div style={s.emptyTitle}>Select an entry or create a new one</div>
-              <div style={s.emptySub}>Your journal is private and saved to the cloud</div>
+            <div style={{ ...s.readView, ...(isMobile ? { padding: "20px 16px" } : {}) }}>
+              <HearMethodContent />
             </div>
           )}
 
@@ -1218,10 +1224,6 @@ const s = {
   sidebarFooter: { padding: "10px 20px", fontSize: 11, color: "#5a4e3a", borderTop: "1px solid #3a2e1e", display: "flex", alignItems: "center", gap: 6 },
   signOutBtn: { background: "none", border: "none", color: "#7a6a50", fontSize: 11, cursor: "pointer", fontFamily: "Georgia,serif", textDecoration: "underline", whiteSpace: "nowrap" },
   main: { flex: 1, overflowY: "auto", background: "#faf6ee" },
-  emptyState: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "#b0a080" },
-  emptyIcon: { fontSize: 40, marginBottom: 16, color: "#c8a96e" },
-  emptyTitle: { fontSize: 18, fontWeight: 600, marginBottom: 6 },
-  emptySub: { fontSize: 13, color: "#c0b090" },
   readView: { padding: "36px 48px", maxWidth: 720, margin: "0 auto" },
   readHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, paddingBottom: 18, borderBottom: "1px solid #e0d8c8" },
   readDate: { fontSize: 12, color: "#a09070", letterSpacing: "0.08em", marginBottom: 4 },
