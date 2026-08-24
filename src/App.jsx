@@ -334,7 +334,7 @@ function ColorPickerModal({ sharedUsers, colorMap, onSave, onClose }) {
 }
 
 // ── Filter Panel ──────────────────────────────────────────────────────────────
-function FilterPanel({ filters, onChange, sharedUsers, showMineOnly, onToggleMineOnly, sidebarTab, onClose }) {
+function FilterPanel({ filters, onChange, sharedUsers, showMineOnly, onToggleMineOnly, sidebarTab, onClose, sortOrder, onSortOrderChange }) {
   const [bookInput, setBookInput] = useState(filters.book || "");
   const [bookSuggestions, setBookSuggestions] = useState([]);
 
@@ -366,6 +366,15 @@ function FilterPanel({ filters, onChange, sharedUsers, showMineOnly, onToggleMin
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {hasFilters && <button style={s.clearBtn} onClick={() => { onChange({}); setBookInput(""); }}>Clear all</button>}
           <button style={s.filterCloseBtn} onClick={onClose} title="Close filters" aria-label="Close filters">✕</button>
+        </div>
+      </div>
+
+      {/* Sort by date created */}
+      <div style={s.filterRow}>
+        <label style={s.filterLabel}>Sort by date created</label>
+        <div style={s.toggleRow}>
+          <button style={{ ...s.toggleBtn, ...(sortOrder === "desc" ? s.toggleBtnActive : {}) }} onClick={() => onSortOrderChange("desc")}>Newest first</button>
+          <button style={{ ...s.toggleBtn, ...(sortOrder === "asc" ? s.toggleBtnActive : {}) }} onClick={() => onSortOrderChange("asc")}>Oldest first</button>
         </div>
       </div>
 
@@ -656,13 +665,17 @@ export default function HearJournal() {
   const [sidebarTab, setSidebarTab] = useState("mine");
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [compactViewMine, setCompactViewMine] = useState(() => localStorage.getItem("compactViewMine") === "true");
+  const [compactViewMine, setCompactViewMine] = useState(() => {
+    const saved = localStorage.getItem("compactViewMine");
+    return saved === null ? true : saved === "true";
+  });
   const [compactViewShared, setCompactViewShared] = useState(() => {
     const saved = localStorage.getItem("compactViewShared");
     return saved === null ? true : saved === "true";
   });
   const [filters, setFilters] = useState({});
   const [showMineOnly, setShowMineOnly] = useState(false);
+  const [sortOrder, setSortOrder] = useState("desc");
 
   // Form state
   const [passage, setPassage] = useState("");
@@ -766,8 +779,15 @@ export default function HearJournal() {
     });
   }
 
-  const filteredEntries = useMemo(() => applyFilters(entries, false), [entries, filters]);
-  const filteredSharedEntries = useMemo(() => applyFilters(sharedEntries, true), [sharedEntries, filters, showMineOnly]);
+  function sortByDate(entryList) {
+    return [...entryList].sort((a, b) => {
+      const diff = new Date(a.date) - new Date(b.date);
+      return sortOrder === "asc" ? diff : -diff;
+    });
+  }
+
+  const filteredEntries = useMemo(() => sortByDate(applyFilters(entries, false)), [entries, filters, sortOrder]);
+  const filteredSharedEntries = useMemo(() => sortByDate(applyFilters(sharedEntries, true)), [sharedEntries, filters, showMineOnly, sortOrder]);
 
   const activeFilterCount = Object.keys(filters).length + (showMineOnly && sidebarTab === "shared" ? 1 : 0);
 
@@ -950,6 +970,8 @@ export default function HearJournal() {
               onToggleMineOnly={setShowMineOnly}
               sidebarTab={sidebarTab}
               onClose={() => setShowFilters(false)}
+              sortOrder={sortOrder}
+              onSortOrderChange={setSortOrder}
             />
           )}
 
