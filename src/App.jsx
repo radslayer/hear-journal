@@ -909,7 +909,9 @@ export default function HearJournal() {
               <div style={s.filterLabel}>Send an email invite</div>
               <button style={{ ...s.saveBtn, display: "block", width: "100%", textAlign: "center", marginTop: 8, cursor: "pointer" }}
                 onClick={() => {
-                  window.location.href = `mailto:?subject=Join me on H.E.A.R. Bible Journal&body=I've been using H.E.A.R. Bible Journal to study the Bible and wanted to invite you to join me. You can access it here: https://hearjournal.upshiftholdings.com%0D%0A%0D%0AOnce you create an account, I can share my journal entries with you directly in the app.`;
+                  const subject = encodeURIComponent("Join me on H.E.A.R. Bible Journal");
+                  const body = encodeURIComponent("I've been using H.E.A.R. Bible Journal to study the Bible and wanted to invite you to join me. You can access it here: https://hearjournal.upshiftholdings.com\r\n\r\nOnce you create an account, I can share my journal entries with you directly in the app.");
+                  window.location.href = `mailto:?subject=${subject}&body=${body}`;
                 }}>
                 Open Email App
               </button>
