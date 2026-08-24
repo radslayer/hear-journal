@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "hear-bible-study-56f67"
-  }
+  },
+  "targets": {
+    "hear-bible-study-56f67": {
+      "hosting": {
+        "app": [
+          "hear-bible-study-56f67"
+        ],
+        "landing": [
+          "upshift-holdings"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
