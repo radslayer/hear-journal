@@ -656,7 +656,11 @@ export default function HearJournal() {
   const [sidebarTab, setSidebarTab] = useState("mine");
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [compactView, setCompactView] = useState(() => localStorage.getItem("compactView") === "true");
+  const [compactViewMine, setCompactViewMine] = useState(() => localStorage.getItem("compactViewMine") === "true");
+  const [compactViewShared, setCompactViewShared] = useState(() => {
+    const saved = localStorage.getItem("compactViewShared");
+    return saved === null ? true : saved === "true";
+  });
   const [filters, setFilters] = useState({});
   const [showMineOnly, setShowMineOnly] = useState(false);
 
@@ -772,12 +776,22 @@ export default function HearJournal() {
     return "#b5813a";
   }
 
+  const compactView = sidebarTab === "shared" ? compactViewShared : compactViewMine;
+
   function toggleCompactView() {
-    setCompactView(v => {
-      const next = !v;
-      localStorage.setItem("compactView", String(next));
-      return next;
-    });
+    if (sidebarTab === "shared") {
+      setCompactViewShared(v => {
+        const next = !v;
+        localStorage.setItem("compactViewShared", String(next));
+        return next;
+      });
+    } else {
+      setCompactViewMine(v => {
+        const next = !v;
+        localStorage.setItem("compactViewMine", String(next));
+        return next;
+      });
+    }
   }
 
   async function saveEntry() {
