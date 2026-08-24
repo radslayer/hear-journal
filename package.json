@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:gh-pages": "GH_PAGES=1 vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
