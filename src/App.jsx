@@ -904,21 +904,6 @@ export default function HearJournal() {
                 </button>
               </div>
             </div>
-            <div style={s.divider}><span>or</span></div>
-            <div style={{ marginBottom: 20 }}>
-              <div style={s.filterLabel}>Send an email invite</div>
-              <button style={{ ...s.saveBtn, display: "block", width: "100%", textAlign: "center", marginTop: 8, cursor: "pointer" }}
-                onClick={() => {
-                  const subject = encodeURIComponent("Join me on H.E.A.R. Bible Journal");
-                  const body = encodeURIComponent("I've been using H.E.A.R. Bible Journal to study the Bible and wanted to invite you to join me. You can access it here: https://hearjournal.upshiftholdings.com\r\n\r\nOnce you create an account, I can share my journal entries with you directly in the app.");
-                  window.location.href = `mailto:?subject=${subject}&body=${body}`;
-                }}>
-                Open Email App
-              </button>
-              <div style={{ fontSize: 11, color: "#8a7a5a", marginTop: 8 }}>
-                If nothing opens, make sure Outlook is set as your default mail app in System Settings → Desktop & Dock → Default web browser (mail).
-              </div>
-            </div>
             <button style={s.cancelBtn} onClick={() => setShowInvite(false)}>Close</button>
           </div>
         </div>
