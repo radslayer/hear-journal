@@ -3,7 +3,7 @@ import { fetchVerse, YV_TRANSLATIONS, FALLBACK_TRANSLATIONS } from "./bibleUtils
 import { initializeApp } from "firebase/app";
 import {
   getFirestore, collection, addDoc, getDocs, deleteDoc, doc,
-  orderBy, query, where, setDoc, getDoc, serverTimestamp, limit
+  orderBy, query, where, setDoc, getDoc, updateDoc, serverTimestamp, limit
 } from "firebase/firestore";
 import {
   getAuth, onAuthStateChanged, signOut,
@@ -697,6 +697,7 @@ export default function HearJournal() {
   const [apply, setApply] = useState("");
   const [respond, setRespond] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -825,15 +826,22 @@ export default function HearJournal() {
   async function saveEntry() {
     if (!passage || !highlight || !user) return;
     setSaving(true);
-    const entry = {
-      date: new Date().toISOString(),
-      passage, title, verseText, highlight, explain, apply, respond, translation,
-      ownerEmail: user.email, sharedWith: [],
-    };
+    const fields = { passage, title, verseText, highlight, explain, apply, respond, translation };
     try {
-      const ref = await addDoc(collection(db, "users", user.uid, "entries"), entry);
-      setEntries(prev => [{ id: ref.id, ...entry }, ...prev]);
-      setView("list"); resetForm();
+      if (editingEntry) {
+        await updateDoc(doc(db, "users", user.uid, "entries", editingEntry.id), fields);
+        const updatedEntry = { ...editingEntry, ...fields };
+        setEntries(prev => prev.map(e => e.id === editingEntry.id ? updatedEntry : e));
+        setSelected(updatedEntry);
+        setEditingEntry(null);
+        setView("read");
+      } else {
+        const entry = { date: new Date().toISOString(), ...fields, ownerEmail: user.email, sharedWith: [] };
+        const ref = await addDoc(collection(db, "users", user.uid, "entries"), entry);
+        setEntries(prev => [{ id: ref.id, ...entry }, ...prev]);
+        setView("list");
+      }
+      resetForm();
       if (isMobile) setShowSidebar(true);
     } catch (e) { alert("Failed to save entry."); console.error(e); }
     finally { setSaving(false); }
@@ -869,7 +877,22 @@ export default function HearJournal() {
   }
 
   function startNewEntry() {
-    setView("new"); setSelected(null); resetForm();
+    setView("new"); setSelected(null); setEditingEntry(null); resetForm();
+    if (isMobile) setShowSidebar(false);
+  }
+
+  function startEditEntry(entry) {
+    setEditingEntry(entry);
+    setPassage(entry.passage || "");
+    setTitle(entry.title || "");
+    setTranslation(entry.translation ?? 111);
+    setVerseText(entry.verseText || "");
+    setVerseError("");
+    setHighlight(entry.highlight || "");
+    setExplain(entry.explain || "");
+    setApply(entry.apply || "");
+    setRespond(entry.respond || "");
+    setView("new");
     if (isMobile) setShowSidebar(false);
   }
 
@@ -1080,6 +1103,7 @@ export default function HearJournal() {
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
+                  {view === "read" && <button style={s.shareEntryBtn} onClick={() => startEditEntry(selected)}>✎ Edit</button>}
                   {view === "read" && <button style={s.shareEntryBtn} onClick={() => setShareTarget(selected)}>⤴ Share</button>}
                   <button style={s.backBtn} onClick={() => { setView("list"); setSelected(null); if (isMobile) setShowSidebar(true); }}>← Back</button>
                 </div>
@@ -1106,8 +1130,8 @@ export default function HearJournal() {
           {view === "new" && (
             <div style={{ ...s.newView, ...(isMobile ? { padding: "20px 16px" } : {}) }}>
               <div style={{ ...s.newHeader, ...(isMobile ? { flexWrap: "wrap", gap: 8 } : {}) }}>
-                <div style={{ ...s.newTitle, ...(isMobile ? { fontSize: 18 } : {}) }}>New Journal Entry</div>
-                <div style={s.newDate}>{formatDate(new Date().toISOString())}</div>
+                <div style={{ ...s.newTitle, ...(isMobile ? { fontSize: 18 } : {}) }}>{editingEntry ? "Edit Journal Entry" : "New Journal Entry"}</div>
+                <div style={s.newDate}>{formatDate(editingEntry ? editingEntry.date : new Date().toISOString())}</div>
               </div>
               <div style={{ ...s.passageRow, ...(isMobile ? { flexWrap: "wrap" } : {}) }}>
                 <div style={{ ...s.passageInputWrap, ...(isMobile ? { minWidth: "100%" } : {}) }}>
@@ -1131,10 +1155,14 @@ export default function HearJournal() {
                 <HearField key={letter} letter={letter} label={label} color={HEAR_COLORS[letter]} value={val} onChange={set} />
               ))}
               <div style={s.actionRow}>
-                <button style={s.cancelBtn} onClick={() => { setView("list"); if (isMobile) setShowSidebar(true); }}>Cancel</button>
+                <button style={s.cancelBtn} onClick={() => {
+                  if (editingEntry) { setView("read"); setEditingEntry(null); }
+                  else { setView("list"); }
+                  if (isMobile) setShowSidebar(true);
+                }}>Cancel</button>
                 <button style={{ ...s.saveBtn, opacity: (!passage || !highlight || saving) ? 0.5 : 1 }}
                   onClick={saveEntry} disabled={!passage || !highlight || saving}>
-                  {saving ? "Saving..." : "Save to Cloud ☁"}
+                  {saving ? "Saving..." : editingEntry ? "Save Changes" : "Save to Cloud ☁"}
                 </button>
               </div>
             </div>
